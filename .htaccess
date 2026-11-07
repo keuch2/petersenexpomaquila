@@ -1,5 +1,8 @@
 Options -Indexes
 DirectoryIndex index.php
+# Motor propio sin reglas: corta la herencia de las reglas de reescritura del
+# sitio padre (p. ej. quitar ".php" con un 301, que rompe api.php y el admin).
+RewriteEngine On
 <FilesMatch "\.(md|sqlite|sqlite-wal|sqlite-shm|txt|log)$">
   Require all denied
 </FilesMatch>
