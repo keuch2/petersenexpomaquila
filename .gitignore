@@ -1,0 +1,6 @@
+# Datos de runtime (se crean solos en el primer request)
+data/*
+!data/.htaccess
+uploads/*
+!uploads/.htaccess
+.DS_Store
