@@ -14,7 +14,8 @@ Served by Homebrew Apache (docroot `/opt/homebrew/var/www/`, port 80, AllowOverr
 
 - Lint: `for f in *.php admin/*.php inc/*.php; do php -l $f; done` and `node --check assets/*.js`.
 - The DB (`data/app.sqlite`) is created and seeded automatically on the first request. To reset everything, delete `data/app.sqlite*` and `data/admin-inicial.txt`, delete everything in `uploads/` except `.htaccess`, then load any page. The new admin password is written to `data/admin-inicial.txt` (blocked from the web).
-- Git: this folder sits inside the Homebrew checkout and is ignored by its `.gitignore`. It has no repository of its own. Don't commit it to Homebrew.
+- Git: own repo `keuch2/petersenexpomaquila` (**public**: never commit server access details or credentials), branch `main`, nested inside the Homebrew checkout (which ignores it; never commit it to Homebrew). `data/` and `uploads/` contents are gitignored.
+- Production target: https://petersen.com.py/expomaquila (deploy pending).
 
 ## Architecture
 
