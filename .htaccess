@@ -6,3 +6,9 @@ RewriteEngine On
 <FilesMatch "\.(md|sqlite|sqlite-wal|sqlite-shm|txt|log)$">
   Require all denied
 </FilesMatch>
+
+# Maqueta 3D: tipo correcto para el .glb y compresión si el servidor la tiene
+AddType model/gltf-binary .glb
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE model/gltf-binary
+</IfModule>

@@ -4,3 +4,6 @@ data/*
 uploads/*
 !uploads/.htaccess
 .DS_Store
+# Fuente de la maqueta (Rhino ~1 GB): no va al repo público; solo el .glb optimizado
+/maqueta/
+tools/maqueta/node_modules/

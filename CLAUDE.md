@@ -31,6 +31,13 @@ Served by Homebrew Apache (docroot `/opt/homebrew/var/www/`, port 80, AllowOverr
   - Dedup is by `phone_key` (strips `595` and leading zeros) and by email. A registered-but-not-spun person can continue only if both phone and email match.
   - Never move prize selection to the client.
 - Pages: `index.php` (public site, content server-rendered; `#kiosco` hash = auto-reset after 25 s and `device=kiosco`), `admin/login.php` (username + password), `admin/index.php` (tabs: resumen, participantes, ganadores, sorteos, premios, admins, contenido; rendered by `assets/admin.js` with HTML strings — escape with `esc()`), `sorteo.php` (admin-only raffle screen, `assets/sorteo.js`).
+- `maqueta.php`: public 3D model of the stand, opened from the hero "Hacer recorrido" button (unless the admin sets `threeDUrl`, which still overrides it). `assets/maqueta.js` is an ES module using three.js r170, vendored in `assets/vendor/three` so it works on flaky fair wifi, via an importmap. It loads `assets/maqueta/stand.glb` (Meshopt + WebP).
+  - The 10 rubros (number, color, brands) live in `ZONES` in `maqueta.js`. Each one is located in the model by its cartel material name, which is the decal image name, e.g. `aire comprimido.jpg`.
+  - `#kiosco` carries over: links return to `index.php#kiosco`, and after 90 s idle the page goes back there.
+- Maqueta conversion (offline, only when the Rhino model changes): the source is `maqueta/Petersen render final.3dm` (~1 GB, gitignored, never commit it).
+  1. `tools/maqueta/extract.py` (Python: `rhino3dm trimesh numpy pillow`) flattens blocks, resolves materials and embedded textures, turns the cartel decals into planar UVs, keeps only the stand region and writes `raw.glb`.
+  2. `tools/maqueta/optimize.mjs` (`npm install` in that folder; `node_modules` is gitignored) simplifies per category: trees, shrubs and vehicles lose their normals and are shown flat-shaded. It also converts textures to WebP and applies Meshopt.
+  - Result: ~18 M → ~0.7 M triangles, ~10 MB. `tools/` is blocked from the web.
 - Prize stock rules:
   - `awarded` counts units given out.
   - Voiding a draw, or deleting/resetting a ruleta winner that hasn't collected the prize, gives the unit back.

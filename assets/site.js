@@ -10,8 +10,7 @@ document.addEventListener("click",e=>{
   if(go){e.preventDefault();const t=document.getElementById(go.dataset.go);t&&t.scrollIntoView({behavior:RM?"auto":"smooth"})}
   const cl=e.target.closest("[data-close]");if(cl){document.getElementById(cl.dataset.close).hidden=true}
 });
-$("#cta3d")?.addEventListener("click",e=>{e.preventDefault();$("#ov3d").hidden=false});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){$("#ov3d").hidden=true}});
+$("#cta3d")?.addEventListener("click",e=>{if(kiosk()){e.preventDefault();location.href="maqueta.php#kiosco"}});
 const applyKiosk=()=>document.body.classList.toggle("kiosk",kiosk());
 window.addEventListener("hashchange",applyKiosk);applyKiosk();
 

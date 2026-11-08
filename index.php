@@ -59,7 +59,7 @@ $boot = ['prizes' => array_map(fn($p) => ['id' => $p['id'], 'name' => $p['name']
           <?php if ($c['threeDUrl']): ?>
             <a class="btn btn-accent" href="<?= h($c['threeDUrl']) ?>" target="_blank" rel="noopener">Hacer recorrido</a>
           <?php else: ?>
-            <a class="btn btn-accent" href="#" id="cta3d">Hacer recorrido</a>
+            <a class="btn btn-accent" href="maqueta.php" id="cta3d">Hacer recorrido</a>
           <?php endif ?>
           <a class="btn btn-ghost" href="#" data-go="registro">Registrate y ganá</a>
         </div>
@@ -195,17 +195,6 @@ $boot = ['prizes' => array_map(fn($p) => ['id' => $p['id'], 'name' => $p['name']
       <button class="btn btn-accent" id="spinBtn" style="min-height:58px;font-size:20px;padding:0 34px">Girar la ruleta</button>
     </div>
     <div class="who result" id="gameResult" hidden aria-live="polite"></div>
-  </div>
-</div>
-
-<!-- Modal 3D -->
-<div class="overlay" id="ov3d" hidden role="dialog" aria-modal="true" aria-labelledby="t3d">
-  <div class="panel">
-    <button class="close" data-close="ov3d" aria-label="Cerrar">×</button>
-    <div class="eyebrow">Stand Petersen Industria</div>
-    <h2 id="t3d" style="font-size:34px;font-stretch:78%;margin:8px 0 10px">Maqueta 3D del stand</h2>
-    <p style="color:var(--muted);margin:0 0 18px">El recorrido 3D del stand se publica en los próximos días. Mientras tanto, registrate y girá la ruleta.</p>
-    <button class="btn btn-accent" data-close="ov3d" data-go="registro">Ir al registro</button>
   </div>
 </div>
 
