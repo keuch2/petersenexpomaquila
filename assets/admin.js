@@ -59,7 +59,7 @@ function tResumen(b){
 /* ---------- Participantes ---------- */
 function tPart(b){
   if(!b.querySelector("#pSearch")){
-    b.innerHTML='<div class="toolbar"><input type="search" id="pSearch" placeholder="Buscar por nombre, empresa, teléfono, email o código"><a class="btn btn-blue btn-sm" href="'+BASE+'api.php?action=export_csv">Exportar CSV</a><span class="num" id="pCount"></span></div>'+
+    b.innerHTML='<div class="toolbar"><input type="search" id="pSearch" placeholder="Buscar por nombre, empresa, teléfono, email o código"><a class="btn btn-blue btn-sm" href="'+BASE+'api.php?action=export_csv">Exportar CSV</a><button class="btn btn-ghost btn-sm" type="button" data-wipe>Borrar participantes y resultados</button><span class="num" id="pCount"></span></div>'+
     '<div class="tbl-wrap"><table style="min-width:1270px"><thead><tr><th>Fecha</th><th>Nombre</th><th>Empresa</th><th>Cargo</th><th>Teléfono</th><th>Email</th><th>Rubro</th><th>Mayor desafío</th><th>Brochure</th><th>Ruleta</th><th>Código</th><th>Sorteo</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>';
     $("#pSearch").addEventListener("input",fillPart);
   }
@@ -91,6 +91,12 @@ $("#editForm").addEventListener("submit",async e=>{
   catch(err){$("#editMsg").textContent=err.error||"No se pudo guardar.";(err.fields||[]).forEach(n=>$("#e_"+n)?.closest(".field").classList.add("err"))}
 });
 
+document.addEventListener("click",async e=>{
+  const w=e.target.closest("[data-wipe]");if(!w)return;
+  if(prompt("Vas a borrar todos los participantes, resultados de la ruleta y ganadores del sorteo, y los premios vuelven a cero entregados. No se puede deshacer. Escribí BORRAR para confirmar.")!=="BORRAR")return;
+  w.disabled=true;await act("reset_results",{confirm:"BORRAR"},"Participantes y resultados borrados");w.disabled=false;
+});
+
 /* ---------- Ganadores ruleta ---------- */
 function tWin(b){
   if(!b.querySelector("#wSearch")){
@@ -117,15 +123,17 @@ document.addEventListener("click",async e=>{
 function tDraws(b){
   const D=S.d.draws;
   const st=d=>d.status==="anulado"?'<span class="pill void">Anulado</span>':d.delivered?'<span class="pill win">Entregado</span>':'<span class="pill pend">Pendiente</span>';
-  b.innerHTML='<div class="toolbar"><a class="btn btn-accent btn-sm" href="'+BASE+'sorteo.php" target="_blank" rel="noopener">Abrir pantalla de sorteo</a><span class="num">'+D.filter(d=>d.status==="valido").length+' ganadores válidos</span></div>'+
+  b.innerHTML='<div class="toolbar"><a class="btn btn-accent btn-sm" href="'+BASE+'sorteo.php" target="_blank" rel="noopener">Abrir pantalla de sorteo</a><button class="btn btn-ghost btn-sm" type="button" data-wipe>Borrar participantes y resultados</button><span class="num">'+D.filter(d=>d.status==="valido").length+' ganadores válidos</span></div>'+
   '<div class="card"><h3>Ganadores del sorteo final</h3><p class="sub">Si el ganador no se presenta o no cumple las bases, anulá el resultado y volvé a sortear para elegir un suplente.</p>'+
   (D.length?'<div class="hist">'+D.map(d=>'<div class="hist-row draw-row"><div><b>'+esc(d.winner_name)+'</b><div class="meta">'+esc(d.prize_name)+' · '+esc(d.empresa)+' · '+esc(d.telefono)+' · '+esc(d.email)+'</div><div class="meta">'+fmtDate(d.at)+' · entre '+d.pool+' participantes'+(d.admin_name?' · por '+esc(d.admin_name):'')+(d.status==="anulado"?' · anulado '+fmtDate(d.voided_at):'')+'</div></div>'+st(d)+
-    '<div class="row-actions">'+(d.status==="valido"?'<button class="btn btn-sm '+(d.delivered?"btn-ghost":"btn-blue")+'" data-ddeliver="'+d.id+'">'+(d.delivered?"Desmarcar":"Marcar entregado")+'</button><button class="btn btn-ghost btn-sm" data-void="'+d.id+'">Anular</button>':'')+'</div></div>').join("")+'</div>'
+    '<div class="row-actions">'+(d.status==="valido"?'<button class="btn btn-sm '+(d.delivered?"btn-ghost":"btn-blue")+'" data-ddeliver="'+d.id+'">'+(d.delivered?"Desmarcar":"Marcar entregado")+'</button><button class="btn btn-ghost btn-sm" data-void="'+d.id+'">Anular</button>':'')+'<button class="btn btn-ghost btn-sm" data-deldraw="'+d.id+'">Eliminar</button></div></div>').join("")+'</div>'
   :'<p class="sub" style="margin:0">Todavía no se realizó ningún sorteo.</p>')+'</div>';
 }
 document.addEventListener("click",async e=>{
   const v=e.target.closest("[data-void]");
   if(v){if(!confirmTap(v,"¿Anular?"))return;v.disabled=true;await act("draw_void",{id:+v.dataset.void},"Resultado anulado");return}
+  const dd=e.target.closest("[data-deldraw]");
+  if(dd){if(!confirmTap(dd,"¿Eliminar?"))return;dd.disabled=true;await act("draw_delete",{id:+dd.dataset.deldraw},"Ganador eliminado");return}
   const d=e.target.closest("[data-ddeliver]");
   if(d){d.disabled=true;await act("draw_deliver",{id:+d.dataset.ddeliver})}
 });

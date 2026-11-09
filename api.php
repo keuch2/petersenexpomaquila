@@ -323,11 +323,20 @@ try {
             tx(function () use ($id) {
                 $p = one('SELECT * FROM participants WHERE id = ?', [$id]);
                 if (!$p) throw new ApiError('Participante no encontrado.', 404);
-                if (one("SELECT 1 FROM draws WHERE participant_id = ? AND status = 'valido'", [$id])) {
-                    throw new ApiError('Ganó el sorteo final: anulá ese resultado antes de eliminarlo.', 409);
-                }
                 return_ruleta_stock($p);
                 run('DELETE FROM participants WHERE id = ?', [$id]);
+            });
+            bump();
+            json_out(['ok' => true]);
+
+        case 'reset_results':
+            // Vacía participantes y sorteos y deja todos los premios sin entregar. No toca admins, premios, contenido ni marcas.
+            $postOnly();
+            if (str_in('confirm') !== 'BORRAR') throw new ApiError('Falta la confirmación.', 422);
+            tx(function (PDO $pdo) {
+                $pdo->exec('DELETE FROM draws');
+                $pdo->exec('DELETE FROM participants');
+                $pdo->exec('UPDATE prizes SET awarded = 0');
             });
             bump();
             json_out(['ok' => true]);
@@ -423,6 +432,17 @@ try {
                 if (!$d) throw new ApiError('Sorteo no encontrado o ya anulado.', 404);
                 run("UPDATE draws SET status = 'anulado', voided_at = ? WHERE id = ?", [now_ms(), $d['id']]);
                 if ($d['prize_id']) run('UPDATE prizes SET awarded = MAX(0, awarded - 1) WHERE id = ?', [$d['prize_id']]);
+            });
+            bump();
+            json_out(['ok' => true]);
+
+        case 'draw_delete':
+            $postOnly();
+            tx(function () {
+                $d = one('SELECT * FROM draws WHERE id = ?', [int_in('id')]);
+                if (!$d) throw new ApiError('Ganador no encontrado.', 404);
+                if ($d['status'] === 'valido' && $d['prize_id']) run('UPDATE prizes SET awarded = MAX(0, awarded - 1) WHERE id = ?', [$d['prize_id']]);
+                run('DELETE FROM draws WHERE id = ?', [$d['id']]);
             });
             bump();
             json_out(['ok' => true]);
