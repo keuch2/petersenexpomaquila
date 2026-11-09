@@ -42,7 +42,7 @@ Served by Homebrew Apache (docroot `/opt/homebrew/var/www/`, port 80, AllowOverr
   - Result: ~18 M → ~0.7 M triangles, ~10 MB. `tools/` is blocked from the web.
 - Prize stock rules:
   - `awarded` counts units given out.
-  - Voiding or deleting a valid draw, or deleting/resetting a ruleta winner that hasn't collected the prize, gives the unit back. Deleting a participant keeps any draw they won (the winner's data is a snapshot). `reset_results` (admin button, typed confirmation) empties participants and draws and sets every prize's `awarded` to 0.
+  - Voiding or deleting a valid draw, or deleting/resetting a ruleta winner that hasn't collected the prize, gives the unit back. Deleting a participant keeps any draw they won (the winner's data is a snapshot).
   - A prize that already has winners can't be deleted, only deactivated.
 - Admin safety rules (enforced in `api.php`): an admin can't delete or deactivate themselves, and there must always be at least one active admin.
 - Uploads: PNG/JPG/WEBP only (checked with `finfo` + `getimagesize`), up to 8 MB, saved with random names in `uploads/`. That folder's `.htaccess` blocks scripts and SVG. `media_url()`/`media()` turn stored relative paths (`logos/…`, `uploads/…`) into URLs.

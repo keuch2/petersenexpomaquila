@@ -1,7 +1,7 @@
 (function(){
 "use strict";
 const BOOT=JSON.parse($("#boot").textContent);
-const S={prizes:BOOT.prizes||[],finalPrize:BOOT.finalPrize||"Premio final",current:null,spinning:false,canTour:!!BOOT.canTour,pending:BOOT.pending,brochureSent:null};
+const S={prizes:BOOT.prizes||[],finalPrize:BOOT.finalPrize||"Premio final",current:null,spinning:false,canTour:!!BOOT.canTour,pending:BOOT.pending,brochureSent:null,demo:!!BOOT.demo};
 const kiosk=()=>location.hash==="#kiosco";
 const localTour=()=>BOOT.tourUrl==="maqueta.php";
 const tourHref=()=>BOOT.tourUrl+(kiosk()&&localTour()?"#kiosco":"");
@@ -90,7 +90,7 @@ function drawWheel(){
 function wrapText(t,max){const w=String(t).split(/\s+/),out=[];let cur="";w.forEach(p=>{if((cur+" "+p).trim().length>max&&cur){out.push(cur);cur=p}else cur=(cur+" "+p).trim()});if(cur)out.push(cur);return out.slice(0,2)}
 function openGame(){
   buildSegs();rot=-Math.PI/2-Math.PI/segs.length;
-  $("#gameHello").textContent="Hola, "+(S.current.nombre||"").split(" ")[0];
+  $("#gameHello").textContent=S.demo?"Vista previa":"Hola, "+(S.current.nombre||"").split(" ")[0];
   $("#gameSide").hidden=false;$("#gameResult").hidden=true;$("#spinBtn").disabled=false;
   $("#gameOv").hidden=false;requestAnimationFrame(drawWheel);$("#spinBtn").focus();
 }
@@ -99,7 +99,7 @@ window.addEventListener("resize",()=>{if(!$("#gameOv").hidden)drawWheel()});
 $("#spinBtn").addEventListener("click",async()=>{
   if(S.spinning||!S.current)return;S.spinning=true;const sb=$("#spinBtn");sb.disabled=true;sb.textContent="Girando…";
   let res;
-  try{res=await api("spin",{token:S.current.token})}
+  try{res=S.demo?demoResult():await api("spin",{token:S.current.token})}
   catch(e){
     S.spinning=false;sb.textContent="Girar la ruleta";
     if(e.status===409||e.status===404){toast(e.error);setTimeout(closeGame,2500)}else{sb.disabled=false;toast(e.error||"No se pudo registrar el giro. Intentá de nuevo.")}
@@ -115,6 +115,8 @@ $("#spinBtn").addEventListener("click",async()=>{
   await new Promise(done=>{(function f(now){const t=Math.min(1,(now-t0)/dur);rot=start+delta*ease(t);drawWheel();t<1?requestAnimationFrame(f):done()})(t0)});
   showResult(res);S.spinning=false;sb.textContent="Girar la ruleta";
 });
+/* Demo del panel: solo anima, no llama a la API (el resultado real siempre lo decide el servidor). */
+function demoResult(){const s=segs[Math.floor(Math.random()*segs.length)];return s.type==="win"?{result:"win",prize:s.prize,code:"DEMO"}:{result:"lose",prize:null,code:null}}
 let resetTimer=null;
 function showResult(res){
   const box=$("#gameResult"),fp=S.finalPrize;
@@ -122,6 +124,12 @@ function showResult(res){
   box.innerHTML=res.result==="win"
     ?'<div class="eyebrow" style="color:#9cc4ea">Premio instantáneo</div><div class="big">¡Ganaste!</div><div class="prize">'+esc(res.prize.name)+'</div><div class="code">'+esc(res.code)+'</div><small>Presentá este código en el mostrador del stand para retirar tu premio. Además seguís participando del sorteo final: '+esc(fp)+'.</small>'
     :'<div class="eyebrow" style="color:#9cc4ea">Resultado</div><div class="big">Esta vez no tocó</div><div class="prize">Ya estás en el sorteo final</div><small>Tu registro participa del sorteo de '+esc(fp)+'. Gracias por visitar a Petersen Industria.</small>';
+  if(S.demo){
+    const n=document.createElement("small");n.textContent="Vista previa: no se registró ningún giro ni se descontó stock.";
+    const again=document.createElement("button");again.className="btn btn-accent";again.style.marginTop="10px";again.style.width="max-content";again.textContent="Girar de nuevo";again.onclick=openGame;
+    const back=document.createElement("a");back.className="btn btn-ghost";back.style.width="max-content";back.textContent="Volver al panel";back.href=BASE+"admin/#premios";
+    box.append(n,again,back);$("#gameSide").hidden=true;box.hidden=false;again.focus();if(res.result==="win")confetti();return;
+  }
   if(S.brochureSent!==null){const n=document.createElement("small");n.textContent=S.brochureSent?"Te enviamos el brochure a tu correo.":"No pudimos enviarte el brochure por correo. Podés descargarlo en el recorrido virtual.";box.append(n)}
   S.canTour=true;
   const tour=document.createElement("a");tour.className="btn btn-accent";tour.style.marginTop="10px";tour.style.width="max-content";tour.textContent="Hacer el recorrido virtual";tour.href=tourHref();
@@ -133,4 +141,5 @@ function showResult(res){
   if(res.result==="win")confetti();
 }
 function closeGame(){clearInterval(resetTimer);$("#gameOv").hidden=true;S.current=null;if(kiosk()){scrollTo(0,0);endVisit()}else{$("#registro").scrollIntoView()}}
+if(S.demo){S.current={token:"",nombre:""};$("#gameSide p").textContent="Así ven los visitantes la ruleta con los premios activos y con stock. Este giro no se registra.";openGame()}
 })();

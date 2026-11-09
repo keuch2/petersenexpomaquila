@@ -24,6 +24,7 @@ $boot = [
     'finalPrize' => $finalText,
     'tourUrl' => $c['threeDUrl'] ?: 'maqueta.php',
     'canTour' => can_tour(),
+    'demo' => isset($_GET['demo']) && current_admin() !== null,
     'pending' => $visitor && !$visitor['spun'] ? ['token' => $visitor['token'], 'nombre' => $visitor['nombre']] : null,
 ];
 ?><!doctype html>

@@ -324,3 +324,6 @@ td.mono{white-space:nowrap}
   .mq-intro{top:12px}.mq-intro .eyebrow{display:none}
   .mq-intro.quiet{opacity:0;transition:opacity .4s}
 }
+
+/* Participantes: las acciones quedan siempre a la vista aunque la tabla se desplace */
+#pBody td:last-child{position:sticky;right:0;background:var(--surface);box-shadow:-8px 0 8px -8px rgba(0,30,60,.25)}

@@ -59,7 +59,7 @@ function tResumen(b){
 /* ---------- Participantes ---------- */
 function tPart(b){
   if(!b.querySelector("#pSearch")){
-    b.innerHTML='<div class="toolbar"><input type="search" id="pSearch" placeholder="Buscar por nombre, empresa, teléfono, email o código"><a class="btn btn-blue btn-sm" href="'+BASE+'api.php?action=export_csv">Exportar CSV</a><button class="btn btn-ghost btn-sm" type="button" data-wipe>Borrar participantes y resultados</button><span class="num" id="pCount"></span></div>'+
+    b.innerHTML='<div class="toolbar"><input type="search" id="pSearch" placeholder="Buscar por nombre, empresa, teléfono, email o código"><a class="btn btn-blue btn-sm" href="'+BASE+'api.php?action=export_csv">Exportar CSV</a><span class="num" id="pCount"></span></div>'+
     '<div class="tbl-wrap"><table style="min-width:1270px"><thead><tr><th>Fecha</th><th>Nombre</th><th>Empresa</th><th>Cargo</th><th>Teléfono</th><th>Email</th><th>Rubro</th><th>Mayor desafío</th><th>Brochure</th><th>Ruleta</th><th>Código</th><th>Sorteo</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>';
     $("#pSearch").addEventListener("input",fillPart);
   }
@@ -91,12 +91,6 @@ $("#editForm").addEventListener("submit",async e=>{
   catch(err){$("#editMsg").textContent=err.error||"No se pudo guardar.";(err.fields||[]).forEach(n=>$("#e_"+n)?.closest(".field").classList.add("err"))}
 });
 
-document.addEventListener("click",async e=>{
-  const w=e.target.closest("[data-wipe]");if(!w)return;
-  if(prompt("Vas a borrar todos los participantes, resultados de la ruleta y ganadores del sorteo, y los premios vuelven a cero entregados. No se puede deshacer. Escribí BORRAR para confirmar.")!=="BORRAR")return;
-  w.disabled=true;await act("reset_results",{confirm:"BORRAR"},"Participantes y resultados borrados");w.disabled=false;
-});
-
 /* ---------- Ganadores ruleta ---------- */
 function tWin(b){
   if(!b.querySelector("#wSearch")){
@@ -111,7 +105,7 @@ function fillWin(){
   const q=$("#wSearch").value.toLowerCase().trim(),fl=$("#wFilter").value;
   const L=W.filter(p=>(!q||[p.code,p.nombre,p.empresa,p.telefono].join(" ").toLowerCase().includes(q))&&(!fl||(fl==="ok")===!!p.delivered));
   $("#wCount").textContent=L.length+" de "+W.length;
-  $("#wList").innerHTML=L.length?L.map(p=>'<div class="hist-row"><div><b>'+esc(p.prize_name)+'</b><div class="meta">'+esc(p.nombre)+' · '+esc(p.empresa)+' · '+esc(p.telefono)+' · '+fmtDate(p.spun_at)+(p.delivered?' · entregado '+fmtDate(p.delivered_at):'')+'</div></div><span class="num" style="font-size:16px;color:var(--fg)">'+esc(p.code)+'</span><button class="btn btn-sm '+(p.delivered?"btn-ghost":"btn-blue")+'" data-deliver="'+p.id+'">'+(p.delivered?"Entregado ✓":"Marcar entregado")+'</button></div>').join("")
+  $("#wList").innerHTML=L.length?L.map(p=>'<div class="hist-row"><div><b>'+esc(p.prize_name)+'</b><div class="meta">'+esc(p.nombre)+' · '+esc(p.empresa)+' · '+esc(p.telefono)+' · '+fmtDate(p.spun_at)+(p.delivered?' · entregado '+fmtDate(p.delivered_at):'')+'</div></div><span class="num" style="font-size:16px;color:var(--fg)">'+esc(p.code)+'</span><div class="row-actions"><button class="btn btn-sm '+(p.delivered?"btn-ghost":"btn-blue")+'" data-deliver="'+p.id+'">'+(p.delivered?"Entregado ✓":"Marcar entregado")+'</button><button class="btn btn-ghost btn-sm" data-delpart="'+p.id+'">Eliminar</button></div></div>').join("")
     :'<p class="sub" style="margin:0">'+(W.length?"Sin coincidencias.":"Todavía no hay ganadores.")+'</p>';
 }
 document.addEventListener("click",async e=>{
@@ -123,7 +117,7 @@ document.addEventListener("click",async e=>{
 function tDraws(b){
   const D=S.d.draws;
   const st=d=>d.status==="anulado"?'<span class="pill void">Anulado</span>':d.delivered?'<span class="pill win">Entregado</span>':'<span class="pill pend">Pendiente</span>';
-  b.innerHTML='<div class="toolbar"><a class="btn btn-accent btn-sm" href="'+BASE+'sorteo.php" target="_blank" rel="noopener">Abrir pantalla de sorteo</a><button class="btn btn-ghost btn-sm" type="button" data-wipe>Borrar participantes y resultados</button><span class="num">'+D.filter(d=>d.status==="valido").length+' ganadores válidos</span></div>'+
+  b.innerHTML='<div class="toolbar"><a class="btn btn-accent btn-sm" href="'+BASE+'sorteo.php" target="_blank" rel="noopener">Abrir pantalla de sorteo</a><span class="num">'+D.filter(d=>d.status==="valido").length+' ganadores válidos</span></div>'+
   '<div class="card"><h3>Ganadores del sorteo final</h3><p class="sub">Si el ganador no se presenta o no cumple las bases, anulá el resultado y volvé a sortear para elegir un suplente.</p>'+
   (D.length?'<div class="hist">'+D.map(d=>'<div class="hist-row draw-row"><div><b>'+esc(d.winner_name)+'</b><div class="meta">'+esc(d.prize_name)+' · '+esc(d.empresa)+' · '+esc(d.telefono)+' · '+esc(d.email)+'</div><div class="meta">'+fmtDate(d.at)+' · entre '+d.pool+' participantes'+(d.admin_name?' · por '+esc(d.admin_name):'')+(d.status==="anulado"?' · anulado '+fmtDate(d.voided_at):'')+'</div></div>'+st(d)+
     '<div class="row-actions">'+(d.status==="valido"?'<button class="btn btn-sm '+(d.delivered?"btn-ghost":"btn-blue")+'" data-ddeliver="'+d.id+'">'+(d.delivered?"Desmarcar":"Marcar entregado")+'</button><button class="btn btn-ghost btn-sm" data-void="'+d.id+'">Anular</button>':'')+'<button class="btn btn-ghost btn-sm" data-deldraw="'+d.id+'">Eliminar</button></div></div>').join("")+'</div>'
@@ -143,7 +137,7 @@ function tPrem(b){
   const R=ruleta(),F=sorteo();
   const sum=R.filter(p=>p.active).reduce((a,p)=>a+(+p.prob||0),0);
   const del=p=>'<button class="btn btn-ghost btn-sm" type="button" data-delprize="'+p.id+'">Eliminar</button>';
-  b.innerHTML='<div class="card"><h3>Premios de la ruleta</h3><p class="sub">La probabilidad es el porcentaje de giros que gana ese premio mientras tenga stock. Lo que falta para 100% es "Seguí participando". Al agotarse un premio, sale de la ruleta.</p><div class="prize-rows">'+
+  b.innerHTML='<div class="card"><h3>Premios de la ruleta</h3><p class="sub">La probabilidad es el porcentaje de giros que gana ese premio mientras tenga stock. Lo que falta para 100% es "Seguí participando". Al agotarse un premio, sale de la ruleta.</p><div class="toolbar"><a class="btn btn-blue btn-sm" href="'+BASE+'?demo=1">Ver demo de la ruleta</a><span class="num">Muestra los premios guardados</span></div><div class="prize-rows">'+
   (R.length?R.map(p=>'<form class="prize-row" data-prize="'+p.id+'"><div class="field"><label>Premio</label><input name="name" value="'+esc(p.name)+'" required></div><div class="field"><label>Stock</label><input name="stock" type="number" min="0" value="'+p.stock+'"></div><div class="field"><label>Prob. %</label><input name="prob" type="number" min="0" max="100" step="0.5" value="'+p.prob+'"></div><div class="delivered">Ganados<br><b>'+p.awarded+'</b></div><label class="tog"><input type="checkbox" name="active" '+(p.active?"checked":"")+'>Activo</label><div class="row-actions"><button class="btn btn-blue btn-sm" type="submit">Guardar</button>'+del(p)+'</div></form>').join(""):'<p class="sub" style="margin:0">Sin premios de ruleta.</p>')+
   '</div><div class="prob-sum"><span>Suma de premios activos: <b>'+pct(sum)+'%</b></span><span>Seguí participando: <b>'+pct(Math.max(0,100-sum))+'%</b></span>'+(sum>100?'<span style="color:var(--bad)">La suma supera 100%: bajá alguna probabilidad.</span>':'')+'</div>'+
   '<form class="add-row" data-newprize="ruleta"><h3 style="font-size:18px;margin:22px 0 10px">Agregar premio de ruleta</h3><div class="fields" style="grid-template-columns:2fr 1fr 1fr auto;align-items:end"><div class="field"><label>Premio</label><input name="name" required placeholder="Ej.: Kit de seguridad industrial"></div><div class="field"><label>Stock</label><input name="stock" type="number" min="1" value="10"></div><div class="field"><label>Prob. %</label><input name="prob" type="number" min="0" max="100" step="0.5" value="5"></div><button class="btn btn-accent btn-sm" style="min-height:46px">Agregar</button></div></form></div>'+

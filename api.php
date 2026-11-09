@@ -329,18 +329,6 @@ try {
             bump();
             json_out(['ok' => true]);
 
-        case 'reset_results':
-            // Vacía participantes y sorteos y deja todos los premios sin entregar. No toca admins, premios, contenido ni marcas.
-            $postOnly();
-            if (str_in('confirm') !== 'BORRAR') throw new ApiError('Falta la confirmación.', 422);
-            tx(function (PDO $pdo) {
-                $pdo->exec('DELETE FROM draws');
-                $pdo->exec('DELETE FROM participants');
-                $pdo->exec('UPDATE prizes SET awarded = 0');
-            });
-            bump();
-            json_out(['ok' => true]);
-
         case 'participant_reset':
             $postOnly();
             $id = int_in('id');
