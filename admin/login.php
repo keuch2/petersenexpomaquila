@@ -15,8 +15,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = (string) ($_POST['password'] ?? '');
     if (!csrf_ok($_POST['csrf'] ?? null)) {
         $error = 'La sesión expiró. Intentá de nuevo.';
-    } elseif (!rate_limit('login', 5, 600, false)) {
-        $error = 'Demasiados intentos fallidos. Esperá 10 minutos.';
     } else {
         $st = db()->prepare('SELECT id, password_hash FROM admins WHERE username = ? AND active = 1');
         $st->execute([$username]);
@@ -31,7 +29,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: ' . base_url() . 'admin/');
             exit;
         }
-        hit('login');
         $error = 'Usuario o contraseña incorrectos.';
     }
 }
