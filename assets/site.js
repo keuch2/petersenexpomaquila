@@ -1,8 +1,13 @@
 (function(){
 "use strict";
 const BOOT=JSON.parse($("#boot").textContent);
-const S={prizes:BOOT.prizes||[],finalPrize:BOOT.finalPrize||"Premio final",current:null,spinning:false};
+const S={prizes:BOOT.prizes||[],finalPrize:BOOT.finalPrize||"Premio final",current:null,spinning:false,canTour:!!BOOT.canTour,pending:BOOT.pending,brochureSent:null};
 const kiosk=()=>location.hash==="#kiosco";
+const localTour=()=>BOOT.tourUrl==="maqueta.php";
+const tourHref=()=>BOOT.tourUrl+(kiosk()&&localTour()?"#kiosco":"");
+function askRegister(){toast("Primero registrate y jugá a la ruleta para hacer el recorrido.");$("#registro").scrollIntoView({behavior:RM?"auto":"smooth"});$("#f_nombre").focus({preventScroll:true})}
+/* Kiosco: el equipo es compartido, cada visitante arranca sin la sesión del anterior. */
+function endVisit(){S.canTour=false;S.pending=null;api("leave",{}).catch(()=>{})}
 
 /* ---------- Navegación ---------- */
 document.addEventListener("click",e=>{
@@ -10,9 +15,13 @@ document.addEventListener("click",e=>{
   if(go){e.preventDefault();const t=document.getElementById(go.dataset.go);t&&t.scrollIntoView({behavior:RM?"auto":"smooth"})}
   const cl=e.target.closest("[data-close]");if(cl){document.getElementById(cl.dataset.close).hidden=true}
 });
-$("#cta3d")?.addEventListener("click",e=>{if(kiosk()){e.preventDefault();location.href="maqueta.php#kiosco"}});
-const applyKiosk=()=>document.body.classList.toggle("kiosk",kiosk());
+$("#cta3d")?.addEventListener("click",e=>{
+  if(!S.canTour){e.preventDefault();if(S.pending){S.current=S.pending;S.pending=null;openGame()}else askRegister();return}
+  if(kiosk()&&localTour()){e.preventDefault();location.href=tourHref()}
+});
+const applyKiosk=()=>{document.body.classList.toggle("kiosk",kiosk());if(kiosk())endVisit()};
 window.addEventListener("hashchange",applyKiosk);applyKiosk();
+if(new URLSearchParams(location.search).has("falta")){history.replaceState(null,"",location.pathname+location.hash);askRegister()}
 
 /* ---------- Registro ---------- */
 $("#regForm").addEventListener("submit",async e=>{
@@ -21,7 +30,7 @@ $("#regForm").addEventListener("submit",async e=>{
   f.querySelectorAll(".field.err").forEach(x=>x.classList.remove("err"));
   const v=n=>f.elements[n].value.trim();
   const d={nombre:v("nombre"),empresa:v("empresa"),cargo:v("cargo"),telefono:v("telefono"),email:v("email").toLowerCase(),rubro:f.elements.rubro.value,
-    desafio:[...f.querySelectorAll('input[name="desafio"]:checked')].map(i=>i.value),consent:$("#f_ok").checked,device:kiosk()?"kiosco":"web"};
+    desafio:[...f.querySelectorAll('input[name="desafio"]:checked')].map(i=>i.value),brochure:!!$("#f_brochure")?.checked,consent:$("#f_ok").checked,device:kiosk()?"kiosco":"web"};
   const bad=[];
   if(d.nombre.length<3)bad.push("nombre");
   if(!d.empresa)bad.push("empresa");
@@ -35,12 +44,14 @@ $("#regForm").addEventListener("submit",async e=>{
   const btn=$("#regBtn");btn.disabled=true;btn.textContent="Registrando…";
   try{
     const r=await api("register",d);
-    S.current={token:r.token,nombre:r.nombre};
+    S.current={token:r.token,nombre:r.nombre};S.pending=null;S.brochureSent=null;
+    if(r.brochure)api("brochure_send",{token:r.token}).then(x=>S.brochureSent=x.sent).catch(()=>S.brochureSent=false);
     try{S.prizes=(await api("state")).prizes}catch(err){}
     f.reset();openGame();
   }catch(err){
     if(err.fields)markBad(err.fields);
     msg.className="msg bad";msg.textContent=err.error||"No pudimos guardar el registro. Revisá la conexión e intentá de nuevo.";
+    if(err.played){S.canTour=true;const a=document.createElement("a");a.href=tourHref();a.textContent=" Hacer el recorrido virtual";if(!localTour()){a.target="_blank";a.rel="noopener"}msg.append(a)}
   }finally{btn.disabled=false;btn.textContent="Registrarme y jugar"}
 });
 
@@ -111,11 +122,15 @@ function showResult(res){
   box.innerHTML=res.result==="win"
     ?'<div class="eyebrow" style="color:#9cc4ea">Premio instantáneo</div><div class="big">¡Ganaste!</div><div class="prize">'+esc(res.prize.name)+'</div><div class="code">'+esc(res.code)+'</div><small>Presentá este código en el mostrador del stand para retirar tu premio. Además seguís participando del sorteo final: '+esc(fp)+'.</small>'
     :'<div class="eyebrow" style="color:#9cc4ea">Resultado</div><div class="big">Esta vez no tocó</div><div class="prize">Ya estás en el sorteo final</div><small>Tu registro participa del sorteo de '+esc(fp)+'. Gracias por visitar a Petersen Industria.</small>';
-  const b=document.createElement("button");b.className="btn btn-accent";b.style.marginTop="10px";b.style.width="max-content";
+  if(S.brochureSent!==null){const n=document.createElement("small");n.textContent=S.brochureSent?"Te enviamos el brochure a tu correo.":"No pudimos enviarte el brochure por correo. Podés descargarlo en el recorrido virtual.";box.append(n)}
+  S.canTour=true;
+  const tour=document.createElement("a");tour.className="btn btn-accent";tour.style.marginTop="10px";tour.style.width="max-content";tour.textContent="Hacer el recorrido virtual";tour.href=tourHref();
+  if(!localTour()){tour.target="_blank";tour.rel="noopener"}box.append(tour);
+  const b=document.createElement("button");b.className="btn btn-ghost";b.style.width="max-content";
   b.textContent=kiosk()?"Siguiente participante":"Listo";b.onclick=closeGame;box.append(b);
   if(kiosk()){let s=25;const sm=document.createElement("small");box.append(sm);const tick=()=>{sm.textContent="La pantalla se reinicia en "+s+" s";if(s--<=0)closeGame()};tick();clearInterval(resetTimer);resetTimer=setInterval(tick,1000)}
-  $("#gameSide").hidden=true;box.hidden=false;b.focus();
+  $("#gameSide").hidden=true;box.hidden=false;tour.focus();
   if(res.result==="win")confetti();
 }
-function closeGame(){clearInterval(resetTimer);$("#gameOv").hidden=true;S.current=null;if(kiosk()){scrollTo(0,0)}else{$("#registro").scrollIntoView()}}
+function closeGame(){clearInterval(resetTimer);$("#gameOv").hidden=true;S.current=null;if(kiosk()){scrollTo(0,0);endVisit()}else{$("#registro").scrollIntoView()}}
 })();

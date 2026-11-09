@@ -101,7 +101,23 @@ CREATE INDEX IF NOT EXISTS hits_idx ON hits (ip, action, at);
 CREATE INDEX IF NOT EXISTS draws_participant ON draws (participant_id);
 SQL);
 
+    $cols = array_column($pdo->query('PRAGMA table_info(participants)')->fetchAll(), 'name');
+    foreach (['brochure' => 'INTEGER NOT NULL DEFAULT 0', 'brochure_sent_at' => 'INTEGER'] as $col => $type) {
+        if (in_array($col, $cols, true)) continue;
+        try {
+            $pdo->exec("ALTER TABLE participants ADD COLUMN $col $type");
+        } catch (PDOException $e) {
+            if (!str_contains($e->getMessage(), 'duplicate column')) throw $e; // otro request ya la creó
+        }
+    }
+
     if (setting_get('seeded', $pdo) === null) db_seed($pdo);
+
+    // Una sola vez, para que llegue a las bases ya sembradas y se pueda borrar desde el panel.
+    if (setting_get('brand_gedore', $pdo) === null) {
+        $pdo->exec("INSERT INTO brands (name, logo, sort) SELECT 'Gedore', 'logos/gedore.png', COALESCE(MAX(sort), 0) + 10 FROM brands WHERE NOT EXISTS (SELECT 1 FROM brands WHERE name = 'Gedore' COLLATE NOCASE)");
+        setting_set('brand_gedore', '1', $pdo);
+    }
 }
 
 function db_seed(PDO $pdo): void

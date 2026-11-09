@@ -29,7 +29,6 @@ const ZONES=[
 // Kiosco: los enlaces vuelven al inicio en modo kiosco y la página se reinicia sola.
 if(kiosk){
   document.querySelectorAll(".mq-home").forEach(a=>a.href=boot.home+"#kiosco");
-  $("#mqCta").href=boot.home+"#kiosco";
   let idle;const arm=()=>{clearTimeout(idle);idle=setTimeout(()=>location.href=boot.home+"#kiosco",90000)};
   ["pointerdown","wheel","keydown"].forEach(ev=>addEventListener(ev,arm,{passive:true}));arm();
 }

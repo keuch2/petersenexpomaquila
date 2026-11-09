@@ -3,9 +3,15 @@ DirectoryIndex index.php
 # Motor propio sin reglas: corta la herencia de las reglas de reescritura del
 # sitio padre (p. ej. quitar ".php" con un 301, que rompe api.php y el admin).
 RewriteEngine On
-<FilesMatch "\.(md|sqlite|sqlite-wal|sqlite-shm|txt|log)$">
+<FilesMatch "\.(md|sqlite|sqlite-wal|sqlite-shm|txt|log|ini)$">
   Require all denied
 </FilesMatch>
+
+# Brochure: PDF de hasta 15 MB desde el panel (con PHP-FPM lo cubre .user.ini)
+<IfModule mod_php.c>
+  php_value upload_max_filesize 16M
+  php_value post_max_size 18M
+</IfModule>
 
 # Maqueta 3D: tipo correcto para el .glb y compresión si el servidor la tiene
 AddType model/gltf-binary .glb

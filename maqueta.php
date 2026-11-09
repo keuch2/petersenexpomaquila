@@ -3,6 +3,12 @@ declare(strict_types=1);
 
 require __DIR__ . '/inc/bootstrap.php';
 
+if (!can_tour()) {
+    // Sin fragmento: el navegador conserva el #kiosco de la URL original.
+    header('Location: ' . base_url() . '?falta=registro');
+    exit;
+}
+
 $base = base_url();
 $boot = ['model' => asset('assets/maqueta/stand.glb'), 'home' => $base];
 ?><!doctype html>
@@ -29,7 +35,7 @@ $boot = ['model' => asset('assets/maqueta/stand.glb'), 'home' => $base];
     <a href="<?= h($base) ?>" class="mq-home" aria-label="Petersen Industria, volver al inicio"><img src="<?= h(asset('assets/logo.png')) ?>" alt="Petersen Industria"></a>
     <nav aria-label="Secciones">
       <a href="<?= h($base) ?>" class="mq-home admin-link">← Volver</a>
-      <a class="btn btn-accent btn-sm mq-cta" id="mqCta" href="<?= h($base) ?>#registro">Registrate y ganá</a>
+      <?php if (brochure_exists()): ?><a class="admin-link mq-brochure" href="<?= h($base) ?>brochure.php" download>Descargar Brochure</a><?php endif ?>
     </nav>
   </div>
 </header>

@@ -138,7 +138,7 @@ function delete_upload(string $path): void
 
 $action = (string) ($_GET['action'] ?? '');
 $isPost = $_SERVER['REQUEST_METHOD'] === 'POST';
-$public = ['state', 'register', 'spin'];
+$public = ['state', 'register', 'spin', 'brochure_send', 'leave'];
 
 try {
     if ($isPost && !csrf_ok($_SERVER['HTTP_X_CSRF'] ?? null)) {
@@ -166,16 +166,20 @@ try {
                 throw new ApiError('Demasiados registros desde esta conexión. Esperá unos minutos o acercate al stand.', 429);
             }
             $device = str_in('device') === 'kiosco' ? 'kiosco' : 'web';
+            $wants = bool_in('brochure') && brochure_can_email();
 
-            $out = tx(function (PDO $pdo) use ($d, $desafio, $device) {
+            $out = tx(function (PDO $pdo) use ($d, $desafio, $device, $wants) {
                 $st = $pdo->prepare('SELECT * FROM participants WHERE phone_key = ? OR email = ?');
                 $st->execute([$d['phone_key'], $d['email']]);
                 $rows = $st->fetchAll();
                 foreach ($rows as $r) {
                     if ($r['spun']) {
+                        // Quien ya jugó y vuelve con sus mismos datos recupera el acceso al recorrido.
+                        $same = count($rows) === 1 && $r['phone_key'] === $d['phone_key'] && $r['email'] === $d['email'];
+                        if ($same) $_SESSION['visitor'] = (int) $r['id'];
                         throw new ApiError($r['result'] === 'win'
                             ? 'Este teléfono o correo ya participó y ganó: ' . $r['prize_name'] . '. Retiralo en el mostrador del stand con tu código.'
-                            : 'Este teléfono o correo ya participó. Ya está en el sorteo final.', 409);
+                            : 'Este teléfono o correo ya participó. Ya está en el sorteo final.', 409, $same ? ['played' => true] : []);
                     }
                 }
                 if ($rows) {
@@ -183,18 +187,38 @@ try {
                     if (count($rows) > 1 || $r['phone_key'] !== $d['phone_key'] || $r['email'] !== $d['email']) {
                         throw new ApiError('Este teléfono o correo ya está registrado con otros datos. Acercate al mostrador del stand.', 409);
                     }
-                    $pdo->prepare('UPDATE participants SET nombre=?, empresa=?, cargo=?, telefono=?, rubro=?, desafio=? WHERE id=?')
-                        ->execute([$d['nombre'], $d['empresa'], $d['cargo'], $d['telefono'], $d['rubro'], json_encode($desafio, JSON_UNESCAPED_UNICODE), $r['id']]);
-                    return ['token' => $r['token'], 'nombre' => $d['nombre']];
+                    $pdo->prepare('UPDATE participants SET nombre=?, empresa=?, cargo=?, telefono=?, rubro=?, desafio=?, brochure=MAX(brochure, ?) WHERE id=?')
+                        ->execute([$d['nombre'], $d['empresa'], $d['cargo'], $d['telefono'], $d['rubro'], json_encode($desafio, JSON_UNESCAPED_UNICODE), $wants ? 1 : 0, $r['id']]);
+                    return ['id' => (int) $r['id'], 'token' => $r['token'], 'nombre' => $d['nombre'], 'brochure' => $wants && $r['brochure_sent_at'] === null];
                 }
                 $token = bin2hex(random_bytes(16));
-                $pdo->prepare('INSERT INTO participants (nombre,empresa,cargo,telefono,phone_key,email,rubro,desafio,device,ip,created_at,token) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+                $pdo->prepare('INSERT INTO participants (nombre,empresa,cargo,telefono,phone_key,email,rubro,desafio,device,ip,created_at,token,brochure) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
                     ->execute([$d['nombre'], $d['empresa'], $d['cargo'], $d['telefono'], $d['phone_key'], $d['email'], $d['rubro'],
-                        json_encode($desafio, JSON_UNESCAPED_UNICODE), $device, client_ip(), now_ms(), $token]);
-                return ['token' => $token, 'nombre' => $d['nombre']];
+                        json_encode($desafio, JSON_UNESCAPED_UNICODE), $device, client_ip(), now_ms(), $token, $wants ? 1 : 0]);
+                return ['id' => (int) $pdo->lastInsertId(), 'token' => $token, 'nombre' => $d['nombre'], 'brochure' => $wants];
             });
+            $_SESSION['visitor'] = $out['id'];
+            unset($out['id']);
             bump();
             json_out($out);
+
+        case 'brochure_send':
+            // Pedido aparte para que el juego no espere al SMTP; se suelta la sesión para no frenar el giro.
+            $postOnly();
+            session_write_close();
+            ignore_user_abort(true);
+            $p = one('SELECT id, email FROM participants WHERE token = ? AND brochure = 1 AND brochure_sent_at IS NULL', [str_in('token', 64)]);
+            if (!$p || !brochure_can_email()) json_out(['sent' => false]);
+            if (!run('UPDATE participants SET brochure_sent_at = ? WHERE id = ? AND brochure_sent_at IS NULL', [now_ms(), $p['id']])) json_out(['sent' => false]);
+            $sent = send_brochure($p['email']);
+            if (!$sent) run('UPDATE participants SET brochure_sent_at = NULL WHERE id = ?', [$p['id']]);
+            bump();
+            json_out(['sent' => $sent]);
+
+        case 'leave':
+            $postOnly();
+            unset($_SESSION['visitor']);
+            json_out(['ok' => true]);
 
         case 'spin':
             $postOnly();
@@ -233,7 +257,7 @@ try {
         case 'admin_state':
             $rev = setting_get('rev') ?? '0';
             if (($_GET['rev'] ?? null) === $rev) json_out(['rev' => $rev, 'same' => true]);
-            $participants = db()->query("SELECT p.id, nombre, empresa, cargo, telefono, email, rubro, desafio, device, created_at, spun, spun_at, result, prize_id, prize_name, code, delivered, delivered_at,
+            $participants = db()->query("SELECT p.id, nombre, empresa, cargo, telefono, email, rubro, desafio, device, created_at, brochure, brochure_sent_at, spun, spun_at, result, prize_id, prize_name, code, delivered, delivered_at,
                 (SELECT COUNT(*) FROM draws d WHERE d.participant_id = p.id AND d.status = 'valido') AS draw_wins
                 FROM participants p ORDER BY created_at DESC")->fetchAll();
             foreach ($participants as &$p) $p['desafio'] = json_decode($p['desafio'] ?: '[]', true) ?: [];
@@ -247,6 +271,8 @@ try {
                 'admins' => db()->query('SELECT id, username, name, active, created_at, last_login_at FROM admins ORDER BY username')->fetchAll(),
                 'brands' => brands(),
                 'content' => site_content(),
+                'brochureFile' => brochure_exists() ? ['size' => filesize(BROCHURE_PATH), 'at' => filemtime(BROCHURE_PATH) * 1000] : null,
+                'mailReady' => mail_config() !== null,
             ]);
 
         case 'draw_info':
@@ -260,7 +286,7 @@ try {
         case 'export_csv':
             $cols = ['created_at' => 'createdAt', 'nombre' => 'nombre', 'empresa' => 'empresa', 'cargo' => 'cargo', 'telefono' => 'telefono',
                 'email' => 'email', 'rubro' => 'rubro', 'desafio' => 'desafio', 'device' => 'device', 'result' => 'result',
-                'prize_name' => 'prizeName', 'code' => 'code', 'delivered' => 'delivered', 'sorteo' => 'sorteoFinal'];
+                'prize_name' => 'prizeName', 'code' => 'code', 'delivered' => 'delivered', 'sorteo' => 'sorteoFinal', 'brochure' => 'brochure'];
             $rows = db()->query("SELECT p.*, (SELECT GROUP_CONCAT(prize_name, ' | ') FROM draws d WHERE d.participant_id = p.id AND d.status = 'valido') AS sorteo
                 FROM participants p ORDER BY created_at DESC")->fetchAll();
             header('Content-Type: text/csv; charset=utf-8');
@@ -272,6 +298,7 @@ try {
                 $r['created_at'] = date('c', intdiv((int) $r['created_at'], 1000));
                 $r['desafio'] = implode(', ', json_decode($r['desafio'] ?: '[]', true) ?: []);
                 $r['delivered'] = $r['delivered'] ? 'sí' : '';
+                $r['brochure'] = !$r['brochure'] ? '' : ($r['brochure_sent_at'] ? 'enviado' : 'pendiente');
                 echo implode(';', array_map(fn($k) => $q($r[$k] ?? ''), array_keys($cols))) . "\n";
             }
             exit;
@@ -528,6 +555,16 @@ try {
             }
             bump();
             json_out(['ok' => true, 'path' => $path]);
+
+        case 'brochure_upload':
+            $postOnly();
+            $f = $_FILES['file'] ?? null;
+            if (!$f || $f['error'] !== UPLOAD_ERR_OK) throw new ApiError('No se pudo subir el PDF. Revisá que no supere 15 MB.', 422);
+            if ($f['size'] > BROCHURE_MAX) throw new ApiError('El PDF supera 15 MB. Reducilo antes de subirlo.', 422);
+            if ((new finfo(FILEINFO_MIME_TYPE))->file($f['tmp_name']) !== 'application/pdf') throw new ApiError('El brochure tiene que ser un PDF.', 422);
+            if (!move_uploaded_file($f['tmp_name'], BROCHURE_PATH)) throw new ApiError('No se pudo guardar el archivo.', 500);
+            bump();
+            json_out(['ok' => true]);
 
         case 'logout':
             $postOnly();

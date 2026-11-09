@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 date_default_timezone_set('America/Asuncion');
 require __DIR__ . '/db.php';
+require __DIR__ . '/mail.php';
 
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
@@ -89,6 +90,22 @@ function require_admin_page(): array
         exit;
     }
     return $a;
+}
+
+/** Participante registrado en esta sesión. */
+function visitor(): ?array
+{
+    $id = $_SESSION['visitor'] ?? null;
+    if (!$id) return null;
+    $st = db()->prepare('SELECT id, nombre, token, spun FROM participants WHERE id = ?');
+    $st->execute([$id]);
+    return $st->fetch() ?: null;
+}
+
+/** El recorrido y la descarga del brochure se habilitan después de jugar (el staff entra siempre). */
+function can_tour(): bool
+{
+    return current_admin() !== null || !empty(visitor()['spun']);
 }
 
 /** Igual que phoneKey() del demo: solo dígitos, sin prefijo 595 ni ceros iniciales. */

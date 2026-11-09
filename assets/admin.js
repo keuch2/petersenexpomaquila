@@ -60,7 +60,7 @@ function tResumen(b){
 function tPart(b){
   if(!b.querySelector("#pSearch")){
     b.innerHTML='<div class="toolbar"><input type="search" id="pSearch" placeholder="Buscar por nombre, empresa, teléfono, email o código"><a class="btn btn-blue btn-sm" href="'+BASE+'api.php?action=export_csv">Exportar CSV</a><span class="num" id="pCount"></span></div>'+
-    '<div class="tbl-wrap"><table style="min-width:1180px"><thead><tr><th>Fecha</th><th>Nombre</th><th>Empresa</th><th>Cargo</th><th>Teléfono</th><th>Email</th><th>Rubro</th><th>Mayor desafío</th><th>Ruleta</th><th>Código</th><th>Sorteo</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>';
+    '<div class="tbl-wrap"><table style="min-width:1270px"><thead><tr><th>Fecha</th><th>Nombre</th><th>Empresa</th><th>Cargo</th><th>Teléfono</th><th>Email</th><th>Rubro</th><th>Mayor desafío</th><th>Brochure</th><th>Ruleta</th><th>Código</th><th>Sorteo</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>';
     $("#pSearch").addEventListener("input",fillPart);
   }
   fillPart();
@@ -69,9 +69,9 @@ function fillPart(){
   const P=S.d.participants,q=($("#pSearch")?.value||"").toLowerCase().trim();
   const L=P.filter(p=>!q||[p.nombre,p.empresa,p.email,p.telefono,p.cargo,p.code].join(" ").toLowerCase().includes(q));
   $("#pCount").textContent=L.length+" de "+P.length;
-  $("#pBody").innerHTML=L.length?L.map(p=>'<tr><td class="mono">'+fmtDate(p.created_at)+'</td><td>'+esc(p.nombre)+'</td><td>'+esc(p.empresa)+'</td><td>'+esc(p.cargo)+'</td><td class="mono">'+esc(p.telefono)+'</td><td>'+esc(p.email)+'</td><td>'+esc(p.rubro)+'</td><td>'+esc(p.desafio.join(", "))+'</td><td>'+resPill(p)+'</td><td class="mono">'+esc(p.code||"")+'</td><td>'+(p.draw_wins?'<span class="pill win">Ganó sorteo</span>':'')+'</td>'+
+  $("#pBody").innerHTML=L.length?L.map(p=>'<tr><td class="mono">'+fmtDate(p.created_at)+'</td><td>'+esc(p.nombre)+'</td><td>'+esc(p.empresa)+'</td><td>'+esc(p.cargo)+'</td><td class="mono">'+esc(p.telefono)+'</td><td>'+esc(p.email)+'</td><td>'+esc(p.rubro)+'</td><td>'+esc(p.desafio.join(", "))+'</td><td>'+(p.brochure?(p.brochure_sent_at?'<span class="pill win">Enviado</span>':'<span class="pill pend">Pendiente</span>'):'')+'</td><td>'+resPill(p)+'</td><td class="mono">'+esc(p.code||"")+'</td><td>'+(p.draw_wins?'<span class="pill win">Ganó sorteo</span>':'')+'</td>'+
     '<td><div class="row-actions"><button class="btn btn-ghost btn-sm" data-edit="'+p.id+'">Editar</button>'+(p.spun?'<button class="btn btn-ghost btn-sm" data-reset="'+p.id+'" title="Permite volver a girar; si ganó y no se entregó, el premio vuelve al stock">Resetear giro</button>':'')+'<button class="btn btn-ghost btn-sm" data-delpart="'+p.id+'">Eliminar</button></div></td></tr>').join("")
-    :'<tr><td colspan="12" style="color:var(--muted)">'+(P.length?"Sin coincidencias.":"Todavía no hay registros. Aparecen aquí apenas alguien completa el formulario.")+'</td></tr>';
+    :'<tr><td colspan="13" style="color:var(--muted)">'+(P.length?"Sin coincidencias.":"Todavía no hay registros. Aparecen aquí apenas alguien completa el formulario.")+'</td></tr>';
 }
 document.addEventListener("click",async e=>{
   const ed=e.target.closest("[data-edit]");
@@ -187,6 +187,7 @@ function tCont(b){
    '</div><h3 style="margin-top:24px">Redes sociales</h3><div class="fields">'+F("s_ig","Instagram",so.instagram,"https://instagram.com/…")+F("s_fb","Facebook",so.facebook,"https://facebook.com/…")+F("s_li","LinkedIn",so.linkedin,"https://linkedin.com/company/…")+F("s_yt","YouTube",so.youtube,"https://youtube.com/@…")+F("s_tt","TikTok",so.tiktok,"https://tiktok.com/@…")+
    '</div><div class="form-actions"><button class="btn btn-accent" type="submit">Guardar contenido</button></div></form>'+
    '<div class="card"><h3>Imagen de portada</h3><p class="sub">Opcional. Reemplaza la ilustración del stand. Recomendado 2400×1400 px, JPG.</p><div class="toolbar">'+(c.heroImage?'<img src="'+esc(media(c.heroImage))+'" alt="" style="height:64px;border-radius:4px">':'')+'<label class="btn btn-blue btn-sm file-btn">Subir imagen<input type="file" accept="image/png,image/jpeg,image/webp" id="heroUp"></label>'+(c.heroImage?'<button class="btn btn-ghost btn-sm" id="heroRm">Quitar imagen</button>':'')+'</div></div>'+
+   '<div class="card"><h3>Brochure</h3><p class="sub">PDF de hasta 15 MB. Se adjunta al correo de quienes lo pidan en el registro y se descarga desde el recorrido virtual.'+(S.d.mailReady?'':' El envío por correo todavía no está configurado (falta data/mail.json en el servidor): hasta entonces la opción no aparece en el formulario.')+'</p><div class="toolbar">'+(S.d.brochureFile?'<a class="btn btn-ghost btn-sm" href="'+BASE+'brochure.php">Ver PDF actual</a><span class="num">'+(S.d.brochureFile.size/1048576).toFixed(1)+' MB · '+fmtDate(S.d.brochureFile.at)+'</span>':'<span class="num">Sin PDF cargado</span>')+'<label class="btn btn-blue btn-sm file-btn">'+(S.d.brochureFile?"Reemplazar PDF":"Subir PDF")+'<input type="file" accept="application/pdf" id="brochUp"></label></div></div>'+
    '<div class="card"><h3>Marcas</h3><p class="sub">Subí el logo de cada marca (PNG, JPG o WEBP). Sin logo se muestra el nombre. Los cambios de nombre y enlace se guardan al salir del campo.</p><div class="brand-admin">'+
    S.d.brands.map(br=>'<div class="brand-adm-row" data-brand="'+br.id+'"><div class="logo-prev">'+(br.logo?'<img src="'+esc(media(br.logo))+'" alt="">':'Sin logo')+'</div><input data-bf="name" value="'+esc(br.name)+'" aria-label="Nombre"><input data-bf="link" value="'+esc(br.link)+'" placeholder="Enlace (opcional)" aria-label="Enlace"><label class="btn btn-blue btn-sm file-btn">Logo<input type="file" accept="image/png,image/jpeg,image/webp" data-blogo="'+br.id+'"></label><button class="btn btn-ghost btn-sm" type="button" data-delbrand="'+br.id+'">Eliminar</button></div>').join("")+
    '</div><div class="toolbar" style="margin-top:12px"><input id="nb_name" class="inp" placeholder="Nombre de la marca" style="flex:1 1 220px"><button class="btn btn-accent btn-sm" id="nbAdd">Agregar marca</button></div></div>';
@@ -195,6 +196,7 @@ function tCont(b){
       contact:{address:v("#c_addr"),phone:v("#c_phone"),whatsapp:v("#c_wa"),email:v("#c_mail"),web:v("#c_web")},
       social:{instagram:v("#s_ig"),facebook:v("#s_fb"),linkedin:v("#s_li"),youtube:v("#s_yt"),tiktok:v("#s_tt")}},"Contenido guardado")};
   $("#heroUp").onchange=e=>upload(e.target.files[0],{kind:"hero"},"Imagen de portada actualizada");
+  $("#brochUp").onchange=e=>{const file=e.target.files[0];if(!file)return;if(file.size>15*1024*1024){toast("El PDF supera 15 MB. Reducilo antes de subirlo.");return}const fd=new FormData();fd.append("file",file);toast("Subiendo…");act("brochure_upload",fd,"Brochure actualizado")};
   if($("#heroRm"))$("#heroRm").onclick=()=>act("hero_remove",{},"Imagen quitada");
   $("#nbAdd").onclick=async()=>{const n=$("#nb_name").value.trim();if(!n)return;await act("brand_add",{name:n},"Marca agregada")};
 }

@@ -18,7 +18,14 @@ $contact = array_filter([
 ], fn($r) => $r[1] !== '');
 $socials = array_filter(['instagram' => 'Instagram', 'facebook' => 'Facebook', 'linkedin' => 'LinkedIn', 'youtube' => 'YouTube', 'tiktok' => 'TikTok'],
     fn($k) => $c['social'][$k] !== '', ARRAY_FILTER_USE_KEY);
-$boot = ['prizes' => array_map(fn($p) => ['id' => $p['id'], 'name' => $p['name']], public_prizes()), 'finalPrize' => $finalText];
+$visitor = visitor();
+$boot = [
+    'prizes' => array_map(fn($p) => ['id' => $p['id'], 'name' => $p['name']], public_prizes()),
+    'finalPrize' => $finalText,
+    'tourUrl' => $c['threeDUrl'] ?: 'maqueta.php',
+    'canTour' => can_tour(),
+    'pending' => $visitor && !$visitor['spun'] ? ['token' => $visitor['token'], 'nombre' => $visitor['nombre']] : null,
+];
 ?><!doctype html>
 <html lang="es">
 <head>
@@ -57,7 +64,7 @@ $boot = ['prizes' => array_map(fn($p) => ['id' => $p['id'], 'name' => $p['name']
         <?php if ($c['heroText']): ?><p><?= h($c['heroText']) ?></p><?php endif ?>
         <div class="ctas">
           <?php if ($c['threeDUrl']): ?>
-            <a class="btn btn-accent" href="<?= h($c['threeDUrl']) ?>" target="_blank" rel="noopener">Hacer recorrido</a>
+            <a class="btn btn-accent" href="<?= h($c['threeDUrl']) ?>" id="cta3d" target="_blank" rel="noopener">Hacer recorrido</a>
           <?php else: ?>
             <a class="btn btn-accent" href="maqueta.php" id="cta3d">Hacer recorrido</a>
           <?php endif ?>
@@ -103,6 +110,7 @@ $boot = ['prizes' => array_map(fn($p) => ['id' => $p['id'], 'name' => $p['name']
             <div class="step"><div class="n">1</div><div><h3>Completá tus datos</h3><p>Formulario rápido: nombre, empresa y contacto. Con tu teléfono validamos que cada persona juegue una sola vez.</p></div></div>
             <div class="step"><div class="n">2</div><div><h3>Girá la ruleta</h3><p>El resultado aparece en pantalla al instante. Si ganás, te damos un código.</p></div></div>
             <div class="step"><div class="n">3</div><div><h3>Retirá tu premio</h3><p>Presentá el código en el mostrador del stand. Ganes o no, ya participás del sorteo final.</p></div></div>
+            <div class="step"><div class="n">4</div><div><h3>Recorré el stand</h3><p>Al terminar el juego se habilita el recorrido virtual del stand.</p></div></div>
           </div>
           <div class="final-prize"><span class="eyebrow">Sorteo final entre todos los registrados</span>
             <?php if ($finals): foreach ($finals as $f): ?><b><?= h($f['name']) ?></b><?php endforeach; else: ?><b>Premio final</b><?php endif ?>
@@ -129,6 +137,7 @@ $boot = ['prizes' => array_map(fn($p) => ['id' => $p['id'], 'name' => $p['name']
                 <?php foreach (DESAFIOS as $d): ?><label><input type="checkbox" name="desafio" value="<?= h($d) ?>"><span><?= h($d) ?></span></label><?php endforeach ?>
               </div>
             </fieldset>
+            <?php if (brochure_can_email()): ?><label class="check full field" style="grid-column:1/-1"><input type="checkbox" id="f_brochure" name="brochure"><span>Quiero recibir el brochure de Petersen Industria en mi correo.</span></label><?php endif ?>
             <label class="check full field" style="grid-column:1/-1"><input type="checkbox" id="f_ok" name="consent" required><span>Acepto las bases y condiciones de la promoción y que Petersen Industria me contacte con información comercial.</span></label>
           </div>
           <div class="form-actions">

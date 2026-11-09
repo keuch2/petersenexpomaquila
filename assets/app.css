@@ -267,9 +267,7 @@ td.mono{white-space:nowrap}
 .mq-page{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 .mq-page .top{position:relative}
 .mq-page .top nav{align-items:center;gap:10px}
-.top nav a.mq-cta{opacity:1;color:var(--accent-ink);font-family:var(--f-display);font-size:14px;letter-spacing:.02em;padding:0 14px}
-.top nav a.mq-cta:hover{background:#ffc928}
-@media (max-width:640px){.top nav a.mq-cta{display:inline-flex}}
+.top nav a.mq-brochure{white-space:nowrap}
 .mq{position:relative;flex:1;min-height:0;background:radial-gradient(120% 90% at 50% 20%,#ffffff 0%,#e9eef4 55%,#d3dde8 100%);color:#0c1a2b;--mq-ink:#0c1a2b}
 .mq canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
 .mq-pins{position:absolute;inset:0;pointer-events:none;overflow:hidden}
